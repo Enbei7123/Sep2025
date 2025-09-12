@@ -1,3 +1,1 @@
-# Sep2025
-# This is my first pages
-Testing
+# default page gor activity folder
