@@ -1,0 +1,14 @@
+h2{
+	font-weight:bold;
+	color:grey;
+}
+
+table{
+	border:2px solid black;
+	border-radius:12px;
+	background:#E5CCFF;
+}
+td {
+    padding: 10px;
+    border: none;
+}

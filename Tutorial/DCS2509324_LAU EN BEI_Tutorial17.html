@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel=icon href=labixiaoxin.png type=image/jpg>
+<link rel="stylesheet" href="DCS2509324_LAU EN BEI_Tutorial17.css">
+<title>Lesson 1</title>
+</head>
+
+<center>
+<h2>Simple JavaScript Calculator</h2>
+
+<table>
+<tr>
+<td>Enter first number:</td>
+<td><input type="number" id="num1" required></td>
+</tr>
+
+<tr>
+<td>Enter second number:</td>
+<td><input type="number" id="num2" required></td>
+</tr>
+
+<tr>
+<td colspan=2 align=center><button onclick="calculate('+')">Add</button>
+<button onclick="calculate('-')">Subtract</button>
+<button onclick="calculate('*')">multiply</button>
+<button onclick="calculate('/')">divide</button></td>
+</tr>
+
+<tr>
+<td colspan=2><h2 id="result">Result:</h2><td>
+</tr>
+</table>
+</center>
+<script>
+	function calculate(operator){
+		let n1=parseFloat(document.getElementById("num1").value);
+		let n2=parseFloat(document.getElementById("num2").value);
+		let result;
+		
+		if (isNaN(n1)||isNaN(n2)){
+			result="Please enter both numbers";
+			}else{
+			switch(operator){
+				case'+':
+					result=n1+n2;
+					break;
+				case'-':
+					result=n1-n2;
+					break;
+				case '*':
+					result=n1*n2;
+					break;
+				case '/':
+					result=n1/n2;
+					break;
+				}
+			}
+			
+			document.getElementById("result").innerHTML="Result:"+result;
+		}
+</script>
+
+
+</html>
