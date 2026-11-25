@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今天吃什么？</title>
+<style>
+:root{--khaki:#c3b091;--khaki-light:#e5dccd;--grey:#777;--dark:#292929;--paper:#f4f1eb}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:Arial,"Microsoft YaHei",sans-serif;background:var(--paper);color:var(--dark);display:flex;align-items:center;justify-content:center;padding:20px;overflow-x:hidden}
+.wrap{width:min(100%,680px);text-align:center;background:#fff;border:1px solid #ded8ce;border-radius:24px;padding:28px 20px;box-shadow:0 18px 50px #29292912;position:relative;overflow:hidden}
+.tag{display:inline-block;background:var(--khaki-light);color:#554a3b;padding:7px 13px;border-radius:99px;font-size:12px;letter-spacing:2px}
+h1{font-size:clamp(28px,6vw,42px);margin:16px 0 8px;letter-spacing:2px}
+.sub{color:#777;margin:0 0 22px;font-size:14px}
+.wheel-area{position:relative;width:min(82vw,390px);aspect-ratio:1;margin:0 auto 22px}
+canvas{width:100%;height:100%;display:block;filter:drop-shadow(0 10px 12px #00000018)}
+.pointer{position:absolute;z-index:2;top:-7px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:17px solid transparent;border-right:17px solid transparent;border-top:34px solid var(--dark);filter:drop-shadow(0 2px 2px #0003)}
+.hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:66px;height:66px;border-radius:50%;background:#f4f1eb;border:7px solid #fff;box-shadow:0 2px 8px #0002;pointer-events:none}
+button{border:0;border-radius:999px;padding:14px 32px;background:var(--dark);color:white;font-size:16px;font-weight:700;cursor:pointer;transition:transform .25s,background .2s}
+button:hover{background:#555}
+button:disabled{opacity:.55;cursor:not-allowed}
+#result{display:none;margin:18px auto 0;padding:18px;border-radius:16px;background:var(--khaki-light);max-width:460px;animation:pop .45s ease}
+#result .small{font-size:13px;color:#665b4b}
+#result h2{font-size:30px;margin:8px 0;color:#3b342b}
+#result p{margin:0;color:#665b4b}
+#choiceArea{display:none;margin:20px auto 0;max-width:460px;padding:20px 14px 16px;background:#f1efeb;border:1px solid #e1ddd5;border-radius:18px;animation:pop .5s ease}
+#choiceArea h2{font-size:clamp(22px,5vw,28px);margin:0 0 8px}
+#choiceArea .hint{font-size:13px;color:#777;margin:0 0 18px}
+.choices{display:flex;justify-content:center;align-items:center;gap:16px;min-height:72px;position:relative}
+#yesBtn{background:#65745e;transform:scale(var(--yesScale,1));transform-origin:center;box-shadow:0 5px 14px #65745e30;animation:gentleGrow 2.5s ease-in-out infinite alternate;z-index:2}
+#noBtn{background:#777;position:relative;z-index:3}
+#loveMessage{display:none;margin:20px auto 0;font-size:30px;font-weight:800;color:#66533e;animation:pop .5s ease}
+#loveMessage small{display:block;font-size:14px;font-weight:500;color:#777;margin-top:8px}
+.heart{position:fixed;top:-40px;z-index:10;pointer-events:none;font-size:24px;animation:fall linear forwards}
+.note{font-size:12px;color:#999;margin:20px 0 0}
+@keyframes pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+@keyframes gentleGrow{from{filter:brightness(1)}to{filter:brightness(1.12)}}
+@keyframes fall{to{transform:translateY(110vh) rotate(360deg);opacity:.15}}
+@media(max-width:420px){.wrap{padding:24px 13px}.choices{gap:10px}button{padding:13px 24px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <span class="tag">TODAY'S FOOD DECISION</span>
+  <h1>今天吃什么？</h1>
+  <p class="sub">选择困难症专用 · 命运交给转盘决定</p>
+  <p id="wheelStatus" class="sub" aria-live="polite">准备好了吗？点击开始转动。</p>
+  <div class="wheel-area">
+    <div class="pointer"></div>
+    <canvas id="wheel" width="700" height="700"></canvas>
+    <div class="hub"></div>
+  </div>
+  <button id="spinBtn" onclick="spinWheel()">开始转动</button>
+  <section id="result">
+    <div class="small" id="firstLine">第一次抽选结果</div>
+    <h2 id="foodResult">—</h2>
+    <p id="message">等等，好像还有安排……</p>
+  </section>
+  <section id="choiceArea">
+    <h2>最后决定：想吃米线吗？🍜</h2>
+    <p class="hint">请认真选择，后果自负。</p>
+    <div class="choices">
+      <button id="yesBtn" onclick="sayYes()">想！</button>
+      <button id="noBtn" onclick="sayNo()">不想</button>
+    </div>
+  </section>
+  <div id="loveMessage">❤️ 爱你 ❤️<small>就知道你会选这个！今天吃米线！</small></div>
+  <p class="note">转盘看似随机，结局早已安排。</p>
+</main>
+<script>
+const foods=["火锅","汉堡","披萨","寿司","炸鸡","炒饭","拉面","麻辣烫","咖喱饭","云吞面","烧烤","意大利面","煎饺","椰浆饭","米线 🍜"];
+const colors=["#c3b091","#9b9b96","#d8cbb7","#777777","#b6a58e","#aaa9a3","#e4d9c8"];
+const canvas=document.getElementById('wheel'),ctx=canvas.getContext('2d');
+const cx=350,cy=350,radius=330,slice=Math.PI*2/foods.length;
+let rotation=0,spinning=false,noCount=0;
+function drawWheel(){
+ ctx.clearRect(0,0,700,700);
+ for(let i=0;i<foods.length;i++){
+  const start=rotation-Math.PI/2+i*slice,end=start+slice;
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,radius,start,end);ctx.closePath();ctx.fillStyle=colors[i%colors.length];ctx.fill();ctx.strokeStyle='#f4f1eb';ctx.lineWidth=5;ctx.stroke();
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(start+slice/2);ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillStyle='#292929';ctx.font='bold 25px Microsoft YaHei, Arial';ctx.fillText(foods[i],radius-24,0);ctx.restore();
+ }
+ ctx.beginPath();ctx.arc(cx,cy,radius,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=10;ctx.stroke();
+}
+drawWheel();
+function angleFor(index){
+ // 让指定食物的扇形中心准确对准顶部指针。
+ return ((Math.PI*2 - (index + 0.5) * slice) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
+}
+function animateTo(target,duration,done){
+ const start=rotation;
+ const startTime=performance.now();
+ function frame(now){
+  const t=Math.min((now-startTime)/duration,1);
+  const ease=1-Math.pow(1-t,4);
+  rotation=start+(target-start)*ease;
+  drawWheel();
+  if(t<1){requestAnimationFrame(frame);}
+  else{rotation=target;drawWheel();if(done)done();}
+ }
+ requestAnimationFrame(frame);
+}
+function spinWheel(){
+ if(spinning)return;
+ spinning=true;
+ const spinBtn=document.getElementById('spinBtn');
+ const status=document.getElementById('wheelStatus');
+ spinBtn.disabled=true;
+ spinBtn.textContent='转盘转动中…';
+ document.getElementById('result').style.display='none';
+ document.getElementById('choiceArea').style.display='none';
+ document.getElementById('loveMessage').style.display='none';
+ noCount=0;
+ document.getElementById('noBtn').style.display='inline-block';
+ document.getElementById('noBtn').style.transform='';
+ document.getElementById('yesBtn').style.setProperty('--yesScale','1');
+ document.querySelector('.hint').textContent='请认真选择，后果自负。';
+
+ // 第一段：随机抽中一款食物，并让转盘真正停下来。
+ const randomIndex=Math.floor(Math.random()*foods.length);
+ const current=((rotation%(Math.PI*2))+(Math.PI*2))%(Math.PI*2);
+ const firstDelta=(angleFor(randomIndex)-current+Math.PI*2)%(Math.PI*2);
+ const firstTarget=rotation+Math.PI*2*(4+Math.floor(Math.random()*3))+firstDelta;
+ status.textContent='第一轮：正在随机抽选食物…';
+ animateTo(firstTarget,3800,()=>{
+  document.getElementById('firstLine').textContent='第一轮随机抽中';
+  document.getElementById('foodResult').textContent=foods[randomIndex];
+  document.getElementById('message').textContent='先等等，转盘好像还没结束。';
+  document.getElementById('result').style.display='block';
+  status.textContent='先停在「'+foods[randomIndex]+'」……';
+
+  // 明确停顿后，第二段让整个转盘再次转动，最后指针准确停在米线扇形。
+  setTimeout(()=>{
+   status.textContent='命运正在重新安排……转盘自动转向米线！';
+   document.getElementById('message').textContent='等等！转盘要自己重新选择了……';
+   const riceIndex=foods.findIndex(food=>food.includes('米线'));
+   const now=((rotation%(Math.PI*2))+(Math.PI*2))%(Math.PI*2);
+   const riceDelta=(angleFor(riceIndex)-now+Math.PI*2)%(Math.PI*2);
+   const secondTarget=rotation+Math.PI*2*(3+Math.floor(Math.random()*2))+riceDelta;
+   animateTo(secondTarget,3400,()=>{
+    document.getElementById('firstLine').textContent='最终结果：指针停在';
+    document.getElementById('foodResult').textContent='米线 🍜';
+    document.getElementById('message').textContent='不管刚才抽中什么，最后还是米线！';
+    status.textContent='最终决定：米线 🍜';
+    document.getElementById('choiceArea').style.display='block';
+    spinBtn.disabled=false;
+    spinBtn.textContent='再转一次';
+    spinning=false;
+   });
+  },1300);
+ });
+}
+function sayYes(){
+ document.getElementById('choiceArea').style.display='none';
+ document.getElementById('loveMessage').style.display='block';
+ for(let i=0;i<32;i++)setTimeout(createHeart,i*75);
+}
+function createHeart(){
+ const heart=document.createElement('div');heart.className='heart';heart.textContent=['❤️','💗','💕','🤎'][Math.floor(Math.random()*4)];
+ heart.style.left=Math.random()*100+'vw';heart.style.animationDuration=(2.5+Math.random()*2)+'s';heart.style.fontSize=(18+Math.random()*22)+'px';document.body.appendChild(heart);setTimeout(()=>heart.remove(),5000);
+}
+function sayNo(){
+ const noBtn=document.getElementById('noBtn'),yesBtn=document.getElementById('yesBtn');noCount++;
+ const area=document.querySelector('.choices');
+ // 「不想」按钮每次都会逃到不同位置并缩小；「想」按钮逐渐变大。
+ const scale=Math.max(.48,1-noCount*.17);noBtn.style.transform=`scale(${scale})`;
+ yesBtn.style.setProperty('--yesScale',String(1+noCount*.22));yesBtn.style.animationDuration='1.2s';
+ if(noCount>=3){noBtn.style.display='none';document.querySelector('.hint').textContent='「不想」选项已下班，请选择另一个。';return;}
+ const maxX=Math.max(0,area.clientWidth/2-70),maxY=18;
+ const x=(Math.random()-.5)*2*maxX,y=(Math.random()-.5)*2*maxY;
+ noBtn.style.transform=`translate(${x}px,${y}px) scale(${scale})`;
+ document.querySelector('.hint').textContent=['再想想嘛？','你确定？按钮都要跑了！'][noCount-1];
+}
+</script>
+</body>
+</html>
